@@ -56,6 +56,7 @@ def calculate_node_hours(experiment_time, nodes, number_of_runs):
     node_hours_per_run = experiment_time * nodes
     node_hours_for_experiment = node_hours_per_run * number_of_runs
     print(f"        The amount of node hours per run is: {node_hours_per_run}")
+    print("         \033[92m ------------->\033[0m")
     print(f"            The amount of node hours for the experiment is: {node_hours_for_experiment}")
     return node_hours_for_experiment
 
@@ -105,6 +106,7 @@ def process_aimd(experiment):
     # Print or calculate based on these values
     print(f"    Timestep Latency (seconds): {timestep_latency_seconds}")
     print(f"    Timestep Size (ps): {timestep_size_ps}")
+    print(f"    Number of total timesteps : {n_timesteps}")
     print(f"    Simulation Target Time (ps): {simulation_target_time_ps}")
     print(f"    Nodes to use : {nodes_to_use}")
     print(f"    Number of runs : {number_of_runs}")
@@ -144,14 +146,15 @@ def process_weak(experiment):
 def process_single_point(experiment):
     print(f"  Processing single point experiment '{experiment.get('title')}'")
 
-    time_per_experiment_seconds = experiment.get('time_per_experiment_sconds',0)
+    time_per_experiment_seconds = experiment.get('time_per_experiment_seconds',0)
     number_of_runs = experiment.get('number_of_runs',0)
     nodes_to_use = experiment.get('nodes_to_use', 0)
 
     time_in_hours = time_per_experiment_seconds / 3600
     time_in_hours = time_in_hours * number_of_runs 
     node_hours = time_in_hours * nodes_to_use 
-    print(f"  Node hours for single point experiment are: {node_hours}")
+    print("         \033[92m ------------->\033[0m")
+    print(f"            Node hours for single point experiment are: {node_hours}")
     return node_hours
 
 def print_experiment_info(machine_info):
