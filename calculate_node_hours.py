@@ -108,6 +108,7 @@ def process_aimd(experiment):
     print(f"    Timestep Size (ps): {timestep_size_ps}")
     print(f"    Number of total timesteps : {n_timesteps}")
     print(f"    Simulation Target Time (ps): {simulation_target_time_ps}")
+    print(f"    Experiment Time (hours): {experiment_time}")
     print(f"    Nodes to use : {nodes_to_use}")
     print(f"    Number of runs : {number_of_runs}")
     node_hours_total = calculate_node_hours(experiment_time, nodes_to_use, number_of_runs) 
@@ -247,5 +248,5 @@ if __name__ == "__main__":
     print("***********************************************************************")
     print("Per machine totals: ")
     for machine_name, (node_hours, charge_type) in machine_node_hours.items():
-        print(f"\033[92m Machine: {machine_name}, Total {charge_type}: {node_hours}\033[0m")
+        print(f"\033[92m Machine: {machine_name}, Total k{charge_type}: {node_hours/1000}\033[0m")
 
