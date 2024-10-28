@@ -52,15 +52,19 @@ def check_experiment_groups(experiment):
     else:
         return None
 
-def calculate_node_hours(experiment_time, nodes, number_of_runs):
+def calculate_node_hours(experiment_time, nodes, number_of_runs, node_hours_conversion_factor):
     node_hours_per_run = experiment_time * nodes
     node_hours_for_experiment = node_hours_per_run * number_of_runs
-    print(f"        The amount of node hours per run is: {node_hours_per_run}")
+    charge_type = "node hours"
+    if node_hours_conversion_factor != 1:
+        charge_type = "SUs"
+        node_hours_for_experiment *= node_hours_conversion_factor
+    print(f"        The amount of {charge_type} per run is: {node_hours_per_run*node_hours_conversion_factor}")
     print("         \033[92m ------------->\033[0m")
-    print(f"            The amount of node hours for the experiment is: {node_hours_for_experiment}")
+    print(f"            The amount of {charge_type} for the experiment is: {node_hours_for_experiment}")
     return node_hours_for_experiment
 
-def calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=None, expected_time_seconds=None, efficiencies=None, scaling_type='strong'):
+def calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=None, expected_time_seconds=None, efficiencies=None, scaling_type='strong', node_hours_conversion_factor=1):
     node_hours = 0
     if scaling_type == 'strong' and time_for_smallest_seconds is not None:
         print(f"Calculating time per node for Strong Scaling:")
@@ -69,6 +73,7 @@ def calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=None, expect
             # Time for this configuration
             time_per_node = (time_for_smallest_seconds / efficiency) * (nodes_to_use[0] / nodes)
             node_hours += (time_per_node / 3600) * nodes
+            node_hours *= node_hours_conversion_factor
             print(f"  Nodes: {nodes}, Efficiency: {efficiency}, Time per Node: {time_per_node:.2f} seconds")
 
     elif scaling_type == 'weak' and expected_time_seconds is not None:
@@ -78,15 +83,19 @@ def calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=None, expect
             # Time for this configuration
             time_per_node = expected_time_seconds / efficiency
             node_hours += (time_per_node / 3600) * nodes
+            node_hours *= node_hours_conversion_factor
             print(f"  Nodes: {nodes}, Efficiency: {efficiency}, Time per Node: {time_per_node:.2f} seconds")
 
     else:
         raise ValueError("Invalid scaling type or missing required parameters.")
+    charge_type = "node hours"
+    if node_hours_conversion_factor != 1:
+        charge_type = "SUs"
     print("         \033[92m ------------->\033[0m")
-    print(f"        Node hours for {scaling_type} are : {node_hours}")
+    print(f"        {charge_type} for {scaling_type} are : {node_hours}")
     return node_hours
 
-def process_aimd(experiment):
+def process_aimd(experiment,node_hours_conversion_factor):
     print(f"  Processing AIMD group for experiment '{experiment.get('title')}'")
     # Implement the logic for handling AIMD experiments here
     # Example: timestep_latency_seconds, timestep_size_fs, simulation_target_time_ps
@@ -111,10 +120,10 @@ def process_aimd(experiment):
     print(f"    Experiment Time (hours): {experiment_time}")
     print(f"    Nodes to use : {nodes_to_use}")
     print(f"    Number of runs : {number_of_runs}")
-    node_hours_total = calculate_node_hours(experiment_time, nodes_to_use, number_of_runs) 
+    node_hours_total = calculate_node_hours(experiment_time, nodes_to_use, number_of_runs, node_hours_conversion_factor) 
     return node_hours_total
 
-def process_strong(experiment):
+def process_strong(experiment,node_hours_conversion_factor):
     print(f"  Processing Strong Scaling group for experiment '{experiment.get('title')}'")
     # Implement the logic for handling strong scaling experiments here
     strong_info = experiment['strong']
@@ -126,10 +135,10 @@ def process_strong(experiment):
     print(f"    Nodes to Use: {nodes_to_use}")
     print(f"    Time for Smallest (seconds): {time_for_smallest_seconds}")
     print(f"    Efficiencies: {efficiencies}")
-    node_hours = calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=time_for_smallest_seconds, efficiencies=efficiencies, scaling_type='strong')
+    node_hours = calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=time_for_smallest_seconds, efficiencies=efficiencies, scaling_type='strong', node_hours_conversion_factor=node_hours_conversion_factor)
     return node_hours
 
-def process_weak(experiment):
+def process_weak(experiment,node_hours_conversion_factor):
     print(f"  Processing Weak Scaling group for experiment '{experiment.get('title')}'")
     # Implement the logic for handling weak scaling experiments here
     weak_info = experiment['weak']
@@ -141,10 +150,10 @@ def process_weak(experiment):
     print(f"    Nodes to Use: {nodes_to_use}")
     print(f"    Expected Time (seconds): {expected_time_seconds}")
     print(f"    Efficiencies: {efficiencies}")
-    node_hours = calculate_time_per_node(nodes_to_use, expected_time_seconds=expected_time_seconds, efficiencies=efficiencies, scaling_type='weak')
+    node_hours = calculate_time_per_node(nodes_to_use, expected_time_seconds=expected_time_seconds, efficiencies=efficiencies, scaling_type='weak', node_hours_conversion_factor=node_hours_conversion_factor)
     return node_hours
 
-def process_single_point(experiment):
+def process_single_point(experiment,node_hours_conversion_factor):
     print(f"  Processing single point experiment '{experiment.get('title')}'")
 
     time_per_experiment_seconds = experiment.get('time_per_experiment_seconds',0)
@@ -154,8 +163,12 @@ def process_single_point(experiment):
     time_in_hours = time_per_experiment_seconds / 3600
     time_in_hours = time_in_hours * number_of_runs 
     node_hours = time_in_hours * nodes_to_use 
+    node_hours *= node_hours_conversion_factor
+    charge_type = "node hours"
+    if node_hours_conversion_factor != 1:
+        charge_type = "SUs"
     print("         \033[92m ------------->\033[0m")
-    print(f"            Node hours for single point experiment are: {node_hours}")
+    print(f"            {charge_type} for single point experiment are: {node_hours}")
     return node_hours
 
 def print_experiment_info(machine_info):
@@ -172,12 +185,21 @@ def print_experiment_info(machine_info):
     print("*******************************************************************************")
     print(f"\nMachine: {machine_name}")
     print(f"Number of Experiments: {num_experiments}\n")
+    # Initialize node hour counters for each group
+    node_hours = {
+        'aimd': 0,
+        'strong': 0,
+        'weak': 0,
+        'single_point': 0
+    }
 
-    # Initialize node hour counters for this machine
-    node_hours_aimd = 0
-    node_hours_strong = 0
-    node_hours_weak = 0
-    node_hours_single_point = 0
+    # Mapping of group names to their processing functions
+    process_functions = {
+        'aimd': process_aimd,
+        'strong': process_strong,
+        'weak': process_weak,
+        'single_point': process_single_point
+    }
 
     # Loop through each experiment and print the title, note, and process group info
     for i, experiment in enumerate(experiments):
@@ -190,26 +212,20 @@ def print_experiment_info(machine_info):
 
         # Check which group is present and process accordingly
         group = check_experiment_groups(experiment)
-        if group == 'aimd':
-            node_hours_aimd += process_aimd(experiment)
-        elif group == 'strong':
-            node_hours_strong += process_strong(experiment)
-        elif group == 'weak':
-            node_hours_weak += process_weak(experiment)
+        if group in process_functions:
+            node_hours[group] += process_functions[group](experiment, node_hours_conversion_factor)
         else:
-            node_hours_single_point += process_single_point(experiment)
+            print(f"  Warning: Unknown group '{group}' for experiment '{title}'")
 
     # Calculate total node hours for the machine
-    total_node_hours = node_hours_aimd + node_hours_strong + node_hours_weak + node_hours_single_point
+    total_node_hours = sum(node_hours.values())
     charge_type = "node hours"
     if node_hours_conversion_factor != 1:
         charge_type = "SUs"
-        total_node_hours *= node_hours_conversion_factor
+        #total_node_hours *= node_hours_conversion_factor
     print("------------------------------------------------------------------------")
     print(f"\033[92m  Total {charge_type} for machine '{machine_name}' = {total_node_hours}\033[0m")
     return total_node_hours
-
-
 
 if __name__ == "__main__":
     # Check if the user provided a JSON file as a command-line argument
