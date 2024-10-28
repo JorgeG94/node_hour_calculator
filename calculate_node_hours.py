@@ -111,7 +111,6 @@ def process_aimd(experiment,node_hours_conversion_factor):
     calculation_time_hours = calculation_time / 3600
     experiment_time = calculation_time_hours 
 
-    
     # Print or calculate based on these values
     print(f"    Timestep Latency (seconds): {timestep_latency_seconds}")
     print(f"    Timestep Size (ps): {timestep_size_ps}")
@@ -123,35 +122,30 @@ def process_aimd(experiment,node_hours_conversion_factor):
     node_hours_total = calculate_node_hours(experiment_time, nodes_to_use, number_of_runs, node_hours_conversion_factor) 
     return node_hours_total
 
-def process_strong(experiment,node_hours_conversion_factor):
-    print(f"  Processing Strong Scaling group for experiment '{experiment.get('title')}'")
-    # Implement the logic for handling strong scaling experiments here
-    strong_info = experiment['strong']
-    nodes_to_use = strong_info.get('nodes_to_use', [])
-    time_for_smallest_seconds = strong_info.get('time_for_smallest_seconds', 0)
-    efficiencies = strong_info.get('efficiencies', [])
+def process_scaling_experiment(experiment, scaling_type, node_hours_conversion_factor):
+    print(f"  Processing {scaling_type.capitalize()} Scaling group for experiment '{experiment.get('title')}'")
+    
+    scaling_info = experiment[scaling_type]
+    nodes_to_use = scaling_info.get('nodes_to_use', [])
+    time_key = 'time_for_smallest_seconds' if scaling_type == 'strong' else 'expected_time_seconds'
+    time_seconds = scaling_info.get(time_key, 0)
+    efficiencies = scaling_info.get('efficiencies', [])
     
     # Print or calculate based on these values
     print(f"    Nodes to Use: {nodes_to_use}")
-    print(f"    Time for Smallest (seconds): {time_for_smallest_seconds}")
+    print(f"    {time_key.replace('_', ' ').capitalize()}: {time_seconds}")
     print(f"    Efficiencies: {efficiencies}")
-    node_hours = calculate_time_per_node(nodes_to_use, time_for_smallest_seconds=time_for_smallest_seconds, efficiencies=efficiencies, scaling_type='strong', node_hours_conversion_factor=node_hours_conversion_factor)
+    
+    node_hours = calculate_time_per_node(
+        nodes_to_use,
+        time_for_smallest_seconds=time_seconds if scaling_type == 'strong' else None,
+        expected_time_seconds=time_seconds if scaling_type == 'weak' else None,
+        efficiencies=efficiencies,
+        scaling_type=scaling_type,
+        node_hours_conversion_factor=node_hours_conversion_factor
+    )
     return node_hours
 
-def process_weak(experiment,node_hours_conversion_factor):
-    print(f"  Processing Weak Scaling group for experiment '{experiment.get('title')}'")
-    # Implement the logic for handling weak scaling experiments here
-    weak_info = experiment['weak']
-    nodes_to_use = weak_info.get('nodes_to_use', [])
-    expected_time_seconds = weak_info.get('expected_time_seconds', 0)
-    efficiencies = weak_info.get('efficiencies', [])
-    
-    # Print or calculate based on these values
-    print(f"    Nodes to Use: {nodes_to_use}")
-    print(f"    Expected Time (seconds): {expected_time_seconds}")
-    print(f"    Efficiencies: {efficiencies}")
-    node_hours = calculate_time_per_node(nodes_to_use, expected_time_seconds=expected_time_seconds, efficiencies=efficiencies, scaling_type='weak', node_hours_conversion_factor=node_hours_conversion_factor)
-    return node_hours
 
 def process_single_point(experiment,node_hours_conversion_factor):
     print(f"  Processing single point experiment '{experiment.get('title')}'")
@@ -193,14 +187,12 @@ def print_experiment_info(machine_info):
         'single_point': 0
     }
 
-    # Mapping of group names to their processing functions
     process_functions = {
-        'aimd': process_aimd,
-        'strong': process_strong,
-        'weak': process_weak,
-        'single_point': process_single_point
+    'aimd': process_aimd,
+    'strong': lambda exp, factor: process_scaling_experiment(exp, 'strong', factor),
+    'weak': lambda exp, factor: process_scaling_experiment(exp, 'weak', factor),
+    'single_point': process_single_point
     }
-
     # Loop through each experiment and print the title, note, and process group info
     for i, experiment in enumerate(experiments):
         title = experiment.get('title', 'No title')
